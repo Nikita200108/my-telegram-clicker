@@ -2,45 +2,153 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Clicker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Crypto Clicker Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; margin: 0; }
-        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        #coin { width: 200px; height: 200px; cursor: pointer; transition: transform 0.1s; }
-        #coin:active { transform: scale(0.9); }
-        .stats { font-size: 24px; margin-bottom: 20px; }
+        body { background: #0b0e11; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        .header { padding: 20px; text-align: center; background: #181a20; border-bottom: 2px solid #2b2f36; }
+        #balance { font-size: 32px; font-weight: bold; color: #f0b90b; }
+        
+        .game-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
+        #coin { width: 220px; transition: transform 0.1s; filter: drop-shadow(0 0 15px #f0b90b); }
+        #coin:active { transform: scale(0.95); }
+
+        .shop-screen { display: none; padding: 20px; height: 70vh; overflow-y: auto; }
+        .upgrade-card { background: #1e2329; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2b2f36; }
+        .upgrade-info h4 { margin: 0; color: #f0b90b; }
+        .upgrade-info p { margin: 5px 0 0; font-size: 12px; color: #848e9c; }
+        .buy-btn { background: #f0b90b; color: black; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .buy-btn:disabled { background: #474d57; color: #848e9c; }
+
+        .nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #181a20; border-top: 1px solid #2b2f36; }
+        .nav-item { flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #848e9c; }
+        .nav-item.active { color: #f0b90b; border-top: 2px solid #f0b90b; }
+
+        .plus-one { position: absolute; color: #f0b90b; font-weight: bold; animation: floatUp 1s forwards; pointer-events: none; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="stats">💰 <span id="balance">0</span></div>
-        <img id="coin" src="https://cdn-icons-png.flaticon.com/512/5968/5968260.png" alt="coin">
-        <p>Нажимай на монету!</p>
+
+<div class="header">
+    <div id="balance">0</div>
+    <div style="font-size: 14px; color: #848e9c;">Уровень: <span id="level">1</span> | Доход: +<span id="per-click">1</span></div>
+</div>
+
+<div id="game" class="game-screen">
+    <img id="coin" src="https://cdn-icons-png.flaticon.com/512/5968/5968260.png">
+</div>
+
+<div id="shop" class="shop-screen">
+    <h3>Улучшения</h3>
+    <div class="upgrade-card">
+        <div class="upgrade-info">
+            <h4>Сила клика</h4>
+            <p>Цена: <span id="click-cost">100</span></p>
+        </div>
+        <button class="buy-btn" onclick="buyUpgrade('click')">КУПИТЬ</button>
     </div>
+    <div class="upgrade-card">
+        <div class="upgrade-info">
+            <h4>Авто-майнинг</h4>
+            <p>Цена: <span id="auto-cost">500</span> (+1/сек)</p>
+        </div>
+        <button class="buy-btn" onclick="buyUpgrade('auto')">КУПИТЬ</button>
+    </div>
+    
+    <h3 style="margin-top: 20px;">Донаты (Звезды)</h3>
+    <div class="upgrade-card">
+        <div class="upgrade-info">
+            <h4>X2 Монет</h4>
+            <p>Цена: 50 ⭐️</p>
+        </div>
+        <button class="buy-btn" onclick="sendDonation(50)">КУПИТЬ</button>
+    </div>
+</div>
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        let balance = 0;
-        let balanceEl = document.getElementById('balance');
-        let coin = document.getElementById('coin');
+<div class="nav">
+    <div class="nav-item active" onclick="showScreen('game')">🎮 ИГРА</div>
+    <div class="nav-item" onclick="showScreen('shop')">🛒 МАГАЗИН</div>
+</div>
 
-        tg.expand(); // Раскрыть на всё окно
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
 
-        coin.onclick = () => {
-            balance++;
-            balanceEl.innerText = balance;
-            // Отправляем данные боту (опционально)
-            tg.HapticFeedback.impactOccurred('medium');
-        };
+    // Состояние игры (загружаем из памяти или ставим дефолт)
+    let state = JSON.parse(localStorage.getItem('clicker_state')) || {
+        balance: 0,
+        clickPower: 1,
+        autoIncome: 0,
+        level: 1,
+        clickCost: 100,
+        autoCost: 500
+    };
 
-        // Кнопка закрытия и сохранения
-        tg.MainButton.setText("СОХРАНИТЬ И ВЫЙТИ").show();
-        tg.MainButton.onClick(() => {
-            tg.sendData(JSON.stringify({balance: balance}));
-            tg.close();
-        });
-    </script>
+    function updateUI() {
+        document.getElementById('balance').innerText = Math.floor(state.balance);
+        document.getElementById('level').innerText = state.level;
+        document.getElementById('per-click').innerText = state.clickPower;
+        document.getElementById('click-cost').innerText = state.clickCost;
+        document.getElementById('auto-cost').innerText = state.autoCost;
+        localStorage.setItem('clicker_state', JSON.stringify(state));
+    }
+
+    // Клик по монете
+    document.getElementById('coin').onclick = (e) => {
+        state.balance += state.clickPower;
+        updateUI();
+        createAnim(e);
+        tg.HapticFeedback.impactOccurred('light');
+    };
+
+    function createAnim(e) {
+        let n = document.createElement('div');
+        n.innerText = '+' + state.clickPower;
+        n.className = 'plus-one';
+        n.style.left = e.pageX + 'px';
+        n.style.top = e.pageY + 'px';
+        document.body.appendChild(n);
+        setTimeout(() => n.remove(), 1000);
+    }
+
+    // Магазин
+    function buyUpgrade(type) {
+        if (type === 'click' && state.balance >= state.clickCost) {
+            state.balance -= state.clickCost;
+            state.clickPower += 1;
+            state.clickCost = Math.floor(state.clickCost * 1.5);
+        } else if (type === 'auto' && state.balance >= state.autoCost) {
+            state.balance -= state.autoCost;
+            state.autoIncome += 1;
+            state.autoCost = Math.floor(state.autoCost * 1.6);
+        }
+        updateUI();
+    }
+
+    // Переключение экранов
+    function showScreen(id) {
+        document.getElementById('game').style.display = id === 'game' ? 'flex' : 'none';
+        document.getElementById('shop').style.display = id === 'shop' ? 'block' : 'none';
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+
+    // Авто-майнинг
+    setInterval(() => {
+        if (state.autoIncome > 0) {
+            state.balance += state.autoIncome / 10;
+            updateUI();
+        }
+    }, 100);
+
+    // Функция доната (имитация вызова)
+    function sendDonation(stars) {
+        tg.showAlert(`Функция оплаты ${stars} звезд будет доступна после настройки платежей в BotFather!`);
+    }
+
+    updateUI();
+</script>
 </body>
 </html>
