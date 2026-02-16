@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; margin: 0; }
+        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        #coin { width: 200px; height: 200px; cursor: pointer; transition: transform 0.1s; }
+        #coin:active { transform: scale(0.9); }
+        .stats { font-size: 24px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="stats">💰 <span id="balance">0</span></div>
+        <img id="coin" src="https://cdn-icons-png.flaticon.com/512/5968/5968260.png" alt="coin">
+        <p>Нажимай на монету!</p>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        let balance = 0;
+        let balanceEl = document.getElementById('balance');
+        let coin = document.getElementById('coin');
+
+        tg.expand(); // Раскрыть на всё окно
+
+        coin.onclick = () => {
+            balance++;
+            balanceEl.innerText = balance;
+            // Отправляем данные боту (опционально)
+            tg.HapticFeedback.impactOccurred('medium');
+        };
+
+        // Кнопка закрытия и сохранения
+        tg.MainButton.setText("СОХРАНИТЬ И ВЫЙТИ").show();
+        tg.MainButton.onClick(() => {
+            tg.sendData(JSON.stringify({balance: balance}));
+            tg.close();
+        });
+    </script>
+</body>
+</html>
